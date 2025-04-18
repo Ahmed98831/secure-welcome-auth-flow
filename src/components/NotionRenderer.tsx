@@ -23,6 +23,7 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
         .ilike('email', userId);
 
       console.log("Supabase query result:", notionPages, fetchError);
+      console.log("Query output – notionPages:", JSON.stringify(notionPages, null, 2));
 
       if (fetchError) {
         console.error("Error fetching from Supabase:", fetchError);
@@ -38,14 +39,14 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
       
       // Fetch the actual page content
       try {
-        console.log("Fetching page content from edge function with pageId:", notionPages[0].pageID);
+        console.log("Fetching page content from edge function with pageID:", notionPages[0].page);
         const response = await fetch(`https://gjwuabvhfsqxodgwbjdp.supabase.co/functions/v1/get-notion-page`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
           },
-          body: JSON.stringify({ pageId: notionPages[0].pageID }),
+          body: JSON.stringify({ pageId: notionPages[0].page }),
         });
 
         const responseText = await response.text();

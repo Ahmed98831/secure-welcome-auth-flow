@@ -12,15 +12,15 @@ export type Database = {
       user_notion_pages: {
         Row: {
           email: string
-          pageID: string
+          page: string
         }
         Insert: {
           email: string
-          pageID: string
+          page: string
         }
         Update: {
           email?: string
-          pageID?: string
+          page?: string
         }
         Relationships: []
       }
