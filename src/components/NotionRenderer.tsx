@@ -16,6 +16,9 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
     queryFn: async () => {
       console.log("Fetching Notion page for user:", userId);
       
+      // Enhanced debug log for userId
+      console.log("User ID raw value:", JSON.stringify(userId));
+      
       // First check if a page exists for this user - now using case-insensitive matching
       const { data: notionPages, error: fetchError } = await supabase
         .from('user_notion_pages')
