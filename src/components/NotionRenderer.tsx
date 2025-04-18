@@ -16,11 +16,11 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
     queryFn: async () => {
       console.log("Fetching Notion page for user:", userId);
       
-      // First check if a page exists for this user
+      // First check if a page exists for this user - now using case-insensitive matching
       const { data: notionPages, error: fetchError } = await supabase
         .from('user_notion_pages')
         .select('*')
-        .eq('email', userId);
+        .ilike('email', userId);
 
       console.log("Supabase query result:", notionPages, fetchError);
 
