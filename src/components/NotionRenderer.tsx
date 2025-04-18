@@ -19,11 +19,11 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
       const cleanEmail = userId.trim().toLowerCase();
       console.log("Normalized email:", cleanEmail);
       
-      // First check if a page exists for this user - now using case-insensitive matching
+      // First check if a page exists for this user - now using exact matching
       const { data: notionPages, error: fetchError } = await supabase
         .from('user_notion_pages')
         .select('*')
-        .ilike('email', cleanEmail);
+        .eq('email', cleanEmail);
 
       console.log("Supabase query result:", notionPages, fetchError);
       console.log("Query output – notionPages:", JSON.stringify(notionPages, null, 2));
