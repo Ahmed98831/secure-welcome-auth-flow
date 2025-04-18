@@ -14,8 +14,8 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
     queryFn: async () => {
       const { data: notionPage, error } = await supabase
         .from('user_notion_pages')
-        .select('notion_page_id')
-        .eq('user_id', userId)
+        .select('pageID')
+        .eq('email', userId)
         .single();
 
       if (error) throw error;
@@ -23,7 +23,7 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
 
       const response = await fetch(`https://gjwuabvhfsqxodgwbjdp.supabase.co/functions/v1/get-notion-page`, {
         headers: {
-          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },
       });
 

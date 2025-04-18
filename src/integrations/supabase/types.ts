@@ -9,7 +9,21 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      user_notion_pages: {
+        Row: {
+          email: string
+          pageID: string
+        }
+        Insert: {
+          email: string
+          pageID: string
+        }
+        Update: {
+          email?: string
+          pageID?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

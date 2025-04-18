@@ -28,7 +28,7 @@ const Welcome: React.FC = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <NotionRenderer userId={user.id} />
+          <NotionRenderer userId={user.email} />
         </div>
       </div>
     </div>
