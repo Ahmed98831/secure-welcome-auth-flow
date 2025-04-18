@@ -25,8 +25,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
     
     if (userError || !user) {
+      console.error("Authentication error:", userError?.message || "No user found");
       throw new Error('Unauthorized')
     }
+
+    console.log("Authenticated user:", user.email);
 
     // Get the page ID from the request body
     let pageId;
@@ -50,54 +53,73 @@ serve(async (req) => {
 
     console.log("Fetching page from Notion API:", pageId);
 
-    // Fetch the page content
-    const page = await notion.pages.retrieve({
-      page_id: pageId,
-    });
-    
-    console.log("Page retrieved successfully");
+    try {
+      // Fetch the page content
+      const page = await notion.pages.retrieve({
+        page_id: pageId,
+      });
+      
+      console.log("Page retrieved successfully:", page.id);
 
-    // Fetch page blocks (content)
-    const blocks = await notion.blocks.children.list({
-      block_id: pageId,
-    });
-    
-    console.log("Retrieved", blocks.results.length, "blocks from the page");
+      // Fetch page blocks (content)
+      const { results: blocks } = await notion.blocks.children.list({
+        block_id: pageId,
+      });
+      
+      console.log("Retrieved", blocks.length, "blocks from the page");
 
-    // Convert Notion content to HTML (simplified version)
-    const html = `
-      <div class="notion-page">
-        <h1>${page.properties.title?.title?.[0]?.plain_text || 'Untitled'}</h1>
-        ${blocks.results.map(block => {
-          if ('paragraph' in block) {
-            return `<p>${block.paragraph.rich_text?.[0]?.plain_text || ''}</p>`
-          }
-          if ('heading_1' in block) {
-            return `<h1>${block.heading_1.rich_text?.[0]?.plain_text || ''}</h1>`
-          }
-          if ('heading_2' in block) {
-            return `<h2>${block.heading_2.rich_text?.[0]?.plain_text || ''}</h2>`
-          }
-          if ('heading_3' in block) {
-            return `<h3>${block.heading_3.rich_text?.[0]?.plain_text || ''}</h3>`
-          }
-          if ('bulleted_list_item' in block) {
-            return `<li>${block.bulleted_list_item.rich_text?.[0]?.plain_text || ''}</li>`
-          }
-          return ''
-        }).join('')}
-      </div>
-    `
+      // Get page title
+      let pageTitle = 'Untitled';
+      if ('properties' in page && page.properties.title) {
+        const titleProperty = page.properties.title;
+        if ('title' in titleProperty && titleProperty.title.length > 0) {
+          pageTitle = titleProperty.title[0].plain_text || 'Untitled';
+        }
+      }
 
-    return new Response(
-      JSON.stringify({ html }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json',
+      // Convert Notion content to HTML (simplified version)
+      const html = `
+        <div class="notion-page">
+          <h1>${pageTitle}</h1>
+          ${blocks.map(block => {
+            if ('paragraph' in block) {
+              const text = block.paragraph.rich_text?.[0]?.plain_text || '';
+              return `<p>${text}</p>`;
+            }
+            if ('heading_1' in block) {
+              const text = block.heading_1.rich_text?.[0]?.plain_text || '';
+              return `<h1>${text}</h1>`;
+            }
+            if ('heading_2' in block) {
+              const text = block.heading_2.rich_text?.[0]?.plain_text || '';
+              return `<h2>${text}</h2>`;
+            }
+            if ('heading_3' in block) {
+              const text = block.heading_3.rich_text?.[0]?.plain_text || '';
+              return `<h3>${text}</h3>`;
+            }
+            if ('bulleted_list_item' in block) {
+              const text = block.bulleted_list_item.rich_text?.[0]?.plain_text || '';
+              return `<li>${text}</li>`;
+            }
+            return '';
+          }).join('')}
+        </div>
+      `;
+
+      return new Response(
+        JSON.stringify({ html }),
+        { 
+          headers: { 
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
         },
-      },
-    )
+      )
+    } catch (notionError) {
+      console.error("Notion API error:", notionError);
+      throw new Error(`Failed to fetch Notion page: ${notionError.message}`);
+    }
   } catch (error) {
     console.error("Error in edge function:", error);
     

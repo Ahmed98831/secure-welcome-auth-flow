@@ -11,7 +11,7 @@ interface NotionRendererProps {
 }
 
 const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
-  const { data: pageData, isLoading, error } = useQuery({
+  const { data: pageData, isLoading, error, isError } = useQuery({
     queryKey: ['notion-page', userId],
     queryFn: async () => {
       console.log("Fetching Notion page for user:", userId);
@@ -47,12 +47,18 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
         });
 
         if (!response.ok) {
-          console.error("Error response from edge function:", response.status, response.statusText);
-          throw new Error('Failed to fetch Notion page');
+          const errorText = await response.text();
+          console.error("Error response from edge function:", response.status, response.statusText, errorText);
+          throw new Error(`Failed to fetch Notion page: ${response.statusText}. ${errorText}`);
         }
 
         const data = await response.json();
         console.log("Received data from edge function:", data);
+        
+        if (!data || !data.html) {
+          throw new Error("Invalid response format from edge function");
+        }
+        
         return data;
       } catch (err) {
         console.error("Error in fetch operation:", err);
@@ -73,7 +79,7 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
     );
   }
 
-  if (error) {
+  if (isError || error) {
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertCircle className="h-4 w-4" />
@@ -93,15 +99,17 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>No content available</AlertTitle>
         <AlertDescription>
-          We couldn't find a Notion page linked to your account. Please contact support.
+          We couldn't find a Notion page linked to your account or the page returned invalid data.
+          Please check your Notion integration permissions and try again.
         </AlertDescription>
       </Alert>
     );
   }
 
   return (
-    <div className="notion-content prose max-w-none" 
-         dangerouslySetInnerHTML={{ __html: pageData.html }} 
+    <div 
+      className="notion-content prose max-w-none" 
+      dangerouslySetInnerHTML={{ __html: pageData.html }} 
     />
   );
 };
