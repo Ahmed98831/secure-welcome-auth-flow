@@ -46,9 +46,16 @@ serve(async (req) => {
       throw new Error('Invalid request body');
     }
 
+    // Check if Notion API key is set
+    const notionApiKey = Deno.env.get('NOTION_API_KEY');
+    if (!notionApiKey) {
+      console.error("NOTION_API_KEY environment variable is not set");
+      throw new Error('Notion API key is not configured');
+    }
+
     // Initialize Notion client
     const notion = new Client({
-      auth: Deno.env.get('NOTION_API_KEY'),
+      auth: notionApiKey,
     });
 
     console.log("Fetching page from Notion API:", pageId);
@@ -60,22 +67,30 @@ serve(async (req) => {
       });
       
       console.log("Page retrieved successfully:", page.id);
+      console.log("Page object:", JSON.stringify(page).substring(0, 500) + "...");
 
       // Fetch page blocks (content)
-      const { results: blocks } = await notion.blocks.children.list({
+      const blocksResponse = await notion.blocks.children.list({
         block_id: pageId,
       });
       
+      const blocks = blocksResponse.results;
       console.log("Retrieved", blocks.length, "blocks from the page");
+      console.log("First few blocks:", JSON.stringify(blocks.slice(0, 2)).substring(0, 500) + "...");
 
       // Get page title
       let pageTitle = 'Untitled';
-      if ('properties' in page && page.properties.title) {
-        const titleProperty = page.properties.title;
-        if ('title' in titleProperty && titleProperty.title.length > 0) {
+      if ('properties' in page && page.properties) {
+        const titleProperty = Object.values(page.properties).find(
+          (prop: any) => prop.type === 'title'
+        ) as any;
+        
+        if (titleProperty && titleProperty.title && titleProperty.title.length > 0) {
           pageTitle = titleProperty.title[0].plain_text || 'Untitled';
         }
       }
+
+      console.log("Page title:", pageTitle);
 
       // Convert Notion content to HTML (simplified version)
       const html = `
@@ -107,6 +122,8 @@ serve(async (req) => {
         </div>
       `;
 
+      console.log("Generated HTML (excerpt):", html.substring(0, 500) + "...");
+      
       return new Response(
         JSON.stringify({ html }),
         { 
@@ -116,11 +133,12 @@ serve(async (req) => {
           },
         },
       )
-    } catch (notionError) {
+    } catch (notionError: any) {
       console.error("Notion API error:", notionError);
+      console.error("Error details:", notionError.status, notionError.code, notionError.message);
       throw new Error(`Failed to fetch Notion page: ${notionError.message}`);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in edge function:", error);
     
     return new Response(

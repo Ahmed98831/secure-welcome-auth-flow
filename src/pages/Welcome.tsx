@@ -10,6 +10,8 @@ const Welcome: React.FC = () => {
 
   if (!user) return null;
 
+  console.log("Current authenticated user:", user);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 p-4">
       <div className="mx-auto max-w-4xl">
@@ -28,7 +30,14 @@ const Welcome: React.FC = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow-lg p-6">
-          {user.email && <NotionRenderer userId={user.email} />}
+          {user.email && (
+            <>
+              <div className="mb-4 text-gray-500 text-sm">
+                Logged in as: {user.email}
+              </div>
+              <NotionRenderer userId={user.email} />
+            </>
+          )}
         </div>
       </div>
     </div>

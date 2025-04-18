@@ -19,8 +19,10 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
       // First check if a page exists for this user
       const { data: notionPages, error: fetchError } = await supabase
         .from('user_notion_pages')
-        .select('pageID')
+        .select('*')
         .eq('email', userId);
+
+      console.log("Supabase query result:", notionPages, fetchError);
 
       if (fetchError) {
         console.error("Error fetching from Supabase:", fetchError);
@@ -28,7 +30,7 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
       }
 
       if (!notionPages || notionPages.length === 0) {
-        console.log("No Notion page found for user:", userId);
+        console.log(`No Notion page found for user: ${userId}. Available data:`, notionPages);
         throw new Error(`No Notion page found for ${userId}`);
       }
 
@@ -36,7 +38,7 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
       
       // Fetch the actual page content
       try {
-        console.log("Fetching page content from edge function");
+        console.log("Fetching page content from edge function with pageId:", notionPages[0].pageID);
         const response = await fetch(`https://gjwuabvhfsqxodgwbjdp.supabase.co/functions/v1/get-notion-page`, {
           method: 'POST',
           headers: {
@@ -46,16 +48,25 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
           body: JSON.stringify({ pageId: notionPages[0].pageID }),
         });
 
+        const responseText = await response.text();
+        console.log("Raw response from edge function:", responseText);
+        
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Error response from edge function:", response.status, response.statusText, errorText);
-          throw new Error(`Failed to fetch Notion page: ${response.statusText}. ${errorText}`);
+          console.error("Error response from edge function:", response.status, response.statusText, responseText);
+          throw new Error(`Failed to fetch Notion page: ${response.statusText}. ${responseText}`);
         }
 
-        const data = await response.json();
-        console.log("Received data from edge function:", data);
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log("Parsed data from edge function:", data);
+        } catch (parseError) {
+          console.error("Error parsing response as JSON:", parseError);
+          throw new Error(`Invalid JSON response: ${responseText}`);
+        }
         
         if (!data || !data.html) {
+          console.error("Invalid response format, missing html:", data);
           throw new Error("Invalid response format from edge function");
         }
         
