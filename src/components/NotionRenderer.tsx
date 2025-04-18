@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,14 +15,15 @@ const NotionRenderer: React.FC<NotionRendererProps> = ({ userId }) => {
     queryFn: async () => {
       console.log("Fetching Notion page for user:", userId);
       
-      // Enhanced debug log for userId
-      console.log("User ID raw value:", JSON.stringify(userId));
+      // Normalize email by trimming and converting to lowercase
+      const cleanEmail = userId.trim().toLowerCase();
+      console.log("Normalized email:", cleanEmail);
       
       // First check if a page exists for this user - now using case-insensitive matching
       const { data: notionPages, error: fetchError } = await supabase
         .from('user_notion_pages')
         .select('*')
-        .ilike('email', userId);
+        .ilike('email', cleanEmail);
 
       console.log("Supabase query result:", notionPages, fetchError);
       console.log("Query output – notionPages:", JSON.stringify(notionPages, null, 2));
