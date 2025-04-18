@@ -9,6 +9,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -27,31 +28,41 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    // Get the user's Notion page ID
-    const { data: notionPage, error: pageError } = await supabaseClient
-      .from('user_notion_pages')
-      .select('notion_page_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (pageError || !notionPage) {
-      throw new Error('No Notion page found for user')
+    // Get the page ID from the request body
+    let pageId;
+    try {
+      const body = await req.json();
+      pageId = body.pageId;
+      console.log("Received page ID:", pageId);
+      
+      if (!pageId) {
+        throw new Error('No page ID provided');
+      }
+    } catch (error) {
+      console.error("Error parsing request body:", error);
+      throw new Error('Invalid request body');
     }
 
     // Initialize Notion client
     const notion = new Client({
       auth: Deno.env.get('NOTION_API_KEY'),
-    })
+    });
+
+    console.log("Fetching page from Notion API:", pageId);
 
     // Fetch the page content
     const page = await notion.pages.retrieve({
-      page_id: notionPage.notion_page_id,
-    })
+      page_id: pageId,
+    });
+    
+    console.log("Page retrieved successfully");
 
     // Fetch page blocks (content)
     const blocks = await notion.blocks.children.list({
-      block_id: notionPage.notion_page_id,
-    })
+      block_id: pageId,
+    });
+    
+    console.log("Retrieved", blocks.results.length, "blocks from the page");
 
     // Convert Notion content to HTML (simplified version)
     const html = `
@@ -60,6 +71,18 @@ serve(async (req) => {
         ${blocks.results.map(block => {
           if ('paragraph' in block) {
             return `<p>${block.paragraph.rich_text?.[0]?.plain_text || ''}</p>`
+          }
+          if ('heading_1' in block) {
+            return `<h1>${block.heading_1.rich_text?.[0]?.plain_text || ''}</h1>`
+          }
+          if ('heading_2' in block) {
+            return `<h2>${block.heading_2.rich_text?.[0]?.plain_text || ''}</h2>`
+          }
+          if ('heading_3' in block) {
+            return `<h3>${block.heading_3.rich_text?.[0]?.plain_text || ''}</h3>`
+          }
+          if ('bulleted_list_item' in block) {
+            return `<li>${block.bulleted_list_item.rich_text?.[0]?.plain_text || ''}</li>`
           }
           return ''
         }).join('')}
@@ -76,6 +99,8 @@ serve(async (req) => {
       },
     )
   } catch (error) {
+    console.error("Error in edge function:", error);
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
